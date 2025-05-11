@@ -1,0 +1,17 @@
+{
+  "name": "analytics_engine",
+  "version": "1.0.0",
+  "description": "Microservice for analytics and reporting on social media mentions.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "dependencies": {}
+}

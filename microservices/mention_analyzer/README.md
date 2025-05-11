@@ -94,7 +94,7 @@ someFunction();
 ### Running Tests
 Tests are written using Jest and are located in the `tests/` directory. To run the tests:
 ```bash
-cd iRELhackathon1/microservices/mention_analyzer
+cd microservices/mention_analyzer
 npm test
 ```
 

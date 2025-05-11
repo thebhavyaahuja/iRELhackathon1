@@ -1,0 +1,18 @@
+{
+  "name": "sentiment_classifier",
+  "version": "1.0.0",
+  "description": "Microservice for classifying tweet sentiments",
+  "license": "ISC",
+  "author": "bitmap4",
+  "type": "module",
+  "main": "src/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+  },
+  "dependencies": {
+    "jest": "^29.7.0"
+  }
+}
