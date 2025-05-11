@@ -112,12 +112,12 @@ async function generateBotResponse(mentionText, intent, tweetUrl) {
     // Construct the prompt for Gemini
     let prompt = "";
     if (intent === "question") {
-        prompt = `As a brand representative, provide a helpful and concise answer to the following customer question. If you cannot answer, politely say so and suggest checking official resources or contacting support. Question: "${mentionText}"`;
+        prompt = `As a brand representative, provide a helpful and concise answer to the following customer question. VERY IMPORTANT : Keep the response brief and of one line. If you cannot answer, politely say so and suggest checking official resources or contacting support. Question: "${mentionText}"`;
     } else if (intent === "complaint") {
-        prompt = `As a brand representative, provide an empathetic and helpful initial response to the following customer complaint. Acknowledge their concern and suggest a way to resolve it (e.g., contact support, DM for details). Do not make specific promises you can't keep. Complaint: "${mentionText}"`;
+        prompt = `As a brand representative, provide an empathetic and helpful initial response to the following customer complaint. Acknowledge their concern and suggest a way to resolve it (e.g., contact support, DM for details). VERY IMPORTANT : Keep the response brief and of one line. Complaint: "${mentionText}"`;
     } else {
         // Fallback for other intents if this function is ever called with them
-        prompt = `Respond to the following message: "${mentionText}"`;
+        prompt = `Respond to the following message: "${mentionText}" VERY IMPORTANT : Keep the response brief and of one line.`;
     }
 
     try {
