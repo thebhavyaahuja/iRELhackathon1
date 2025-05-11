@@ -62,13 +62,9 @@ services:
       - kafka
     networks:
       - social_sentiment_net
-    dns: # Add DNS servers
-      - 8.8.8.8
-      - 8.8.4.4
     environment:
       # Add any environment variables needed by mention_analyzer
       KAFKA_BROKER_URL: kafka:9092
-      # - TWITTER_API_KEY=your_key_here
     restart: unless-stopped
 
   sentiment_classifier:
@@ -103,9 +99,6 @@ services:
       - kafka
     networks:
       - social_sentiment_net
-    dns: # Add DNS servers
-      - 8.8.8.8
-      - 8.8.4.4
     environment:
       KAFKA_BROKER_URL: kafka:9092
       GEMINI_API_KEY: AIzaSyDAiq7Kj6LHr3vrYS7AAt3_MxI5e1JxHTY
