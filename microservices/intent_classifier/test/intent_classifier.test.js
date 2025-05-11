@@ -1,4 +1,4 @@
-import { classifyIntentAndType } from '../src/index.js';;
+import { classifyIntentAndType } from '../src/index.js';
 
 // --- IMPORTANT ---
 // The following is a DUMMY implementation for 'classifyIntentAndType'
@@ -54,6 +54,7 @@ import { classifyIntentAndType } from '../src/index.js';;
 //     classifyIntentAndType = (mentions) => { /* Fallback dummy for non-Node.js like test env */ return mentions.map(m => ({...m, intent: 'other', handlingType: 'manual_review'})); };
 // }
 // --- END DUMMY IMPLEMENTATION ---
+// The dummy implementation above is now removed as the actual function is imported.
 
 describe('Intent Classifier Microservice', () => {
     describe('classifyIntentAndType function', () => {

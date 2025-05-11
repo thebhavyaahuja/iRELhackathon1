@@ -1,8 +1,8 @@
-// iRELhackathon1/microservices/mention_analyzer/tests/mention_analyzer.test.js
-const { extractAndAnalyzeMentions } = require('../src/mention_analyzer');
+import { describe, beforeAll, beforeEach, afterEach, expect, jest } from '@jest/globals';
+import { extractAndAnalyzeMentions } from '../src/mention_analyzer.js';
 
 // Mock the global fetch function
-global.fetch = jest.fn();
+// global.fetch = jest.fn();
 
 const mockTweetEntry = (tweetId, userId, screenName, name, text, date, favs, rts, lang) => ({
     entryId: `tweet-${tweetId}`,
@@ -93,9 +93,18 @@ const mockUserEntry = (userId, screenName, name, description, location, follower
 });
 
 describe('extractAndAnalyzeMentions', () => {
+    const originalEnv = process.env;
+    let fetchSpy;
+
     beforeEach(() => {
-        // Clear all instances and calls to constructor and all methods: 
-        fetch.mockClear();
+        process.env = { ...originalEnv };
+        process.env.X_BEARER_TOKEN = 'test_token';
+        fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(jest.fn());
+    });
+
+    afterEach(() => {
+        process.env = originalEnv;
+        jest.restoreAllMocks();
     });
 
     it('should extract user and tweet mentions from a successful API response for "Jest testing"', async () => {
@@ -120,7 +129,7 @@ describe('extractAndAnalyzeMentions', () => {
             }
         };
 
-        fetch.mockResolvedValueOnce({
+        fetchSpy.mockResolvedValueOnce({
             ok: true,
             json: async () => mockApiResponse,
             statusText: 'OK'
@@ -128,10 +137,10 @@ describe('extractAndAnalyzeMentions', () => {
 
         const mentions = await extractAndAnalyzeMentions('Jest testing');
 
-        expect(fetch).toHaveBeenCalledTimes(1);
-        const fetchUrl = fetch.mock.calls[0][0];
-        expect(fetchUrl).toContain('rawQuery%22%3A%22Jest%20testing%22'); // Check if the query is in the URL
-        expect(fetch.mock.calls[0][1].method).toBe('GET');
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        const fetchUrl = fetchSpy.mock.calls[0][0];
+        expect(fetchUrl).toContain('rawQuery%22%3A%22Jest%20testing%22');
+        expect(fetchSpy.mock.calls[0][1].method).toBe('GET');
 
         expect(mentions).toHaveLength(2);
 
@@ -159,6 +168,7 @@ describe('extractAndAnalyzeMentions', () => {
             favoriteCount: 10,
             retweetCount: 5,
             lang: "en",
+            tweetUrl: "https://x.com/testerDev/status/tweet456",
             type: 'tweet'
         });
     });
@@ -182,45 +192,45 @@ describe('extractAndAnalyzeMentions', () => {
             }
         };
 
-        fetch.mockResolvedValueOnce({
+        fetchSpy.mockResolvedValueOnce({
             ok: true,
             json: async () => mockApiResponse,
             statusText: 'OK'
         });
 
         const mentions = await extractAndAnalyzeMentions('empty query');
-        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(mentions).toHaveLength(0);
     });
 
     it('should throw an error if the network response is not ok', async () => {
-        fetch.mockResolvedValueOnce({
+        fetchSpy.mockResolvedValueOnce({
             ok: false,
             statusText: 'Forbidden',
             text: async () => 'API limit exceeded'
         });
 
         await expect(extractAndAnalyzeMentions('error query')).rejects.toThrow('Network response was not ok Forbidden. Body: API limit exceeded');
-        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should handle missing data structures in API response gracefully', async () => {
         const mockApiResponse = { data: {} }; // Incomplete data
 
-        fetch.mockResolvedValueOnce({
+        fetchSpy.mockResolvedValueOnce({
             ok: true,
             json: async () => mockApiResponse,
             statusText: 'OK'
         });
 
         const mentions = await extractAndAnalyzeMentions('malformed data');
-        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(mentions).toEqual([]); // Should return empty array or handle as per design
     });
 
     it('should correctly encode the search query in the API URL', async () => {
         const mockApiResponse = { data: { search_by_raw_query: { search_timeline: { timeline: { instructions: [] } } } } }; // Minimal valid structure
-        fetch.mockResolvedValueOnce({
+        fetchSpy.mockResolvedValueOnce({
             ok: true,
             json: async () => mockApiResponse,
             statusText: 'OK'
@@ -229,11 +239,11 @@ describe('extractAndAnalyzeMentions', () => {
         const searchQuery = 'complex query with spaces & special chars like !@#$%^&*()';
         await extractAndAnalyzeMentions(searchQuery);
 
-        expect(fetch).toHaveBeenCalledTimes(1);
-        const fetchUrl = fetch.mock.calls[0][0];
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        const fetchUrl = fetchSpy.mock.calls[0][0];
         const expectedEncodedQuery = encodeURIComponent(searchQuery);
         expect(fetchUrl).toContain(`rawQuery%22%3A%22${expectedEncodedQuery}%22`);
-        expect(fetch.mock.calls[0][1].headers.Referer).toBe(`https://x.com/search?q=${encodeURIComponent(searchQuery)}&src=typed_query`);
+        expect(fetchSpy.mock.calls[0][1].headers.Referer).toBe(`https://x.com/search?q=${encodeURIComponent(searchQuery)}&src=typed_query`);
     });
 
     it('should extract only user mentions if only user entries are present', async () => {
@@ -257,13 +267,14 @@ describe('extractAndAnalyzeMentions', () => {
             }
         };
 
-        fetch.mockResolvedValueOnce({
+        fetchSpy.mockResolvedValueOnce({
             ok: true,
             json: async () => mockApiResponse,
             statusText: 'OK'
         });
 
         const mentions = await extractAndAnalyzeMentions('users only');
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(mentions).toHaveLength(1);
         expect(mentions[0].type).toBe('user_profile');
         expect(mentions[0].screenName).toBe('UserOnlyScreen');
@@ -290,13 +301,14 @@ describe('extractAndAnalyzeMentions', () => {
             }
         };
 
-        fetch.mockResolvedValueOnce({
+        fetchSpy.mockResolvedValueOnce({
             ok: true,
             json: async () => mockApiResponse,
             statusText: 'OK'
         });
 
         const mentions = await extractAndAnalyzeMentions('tweets only');
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(mentions).toHaveLength(1);
         expect(mentions[0].type).toBe('tweet');
         expect(mentions[0].tweetId).toBe('tweetOnly1');
