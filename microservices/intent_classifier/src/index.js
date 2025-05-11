@@ -24,55 +24,64 @@ let isConsumerConnected = false;
 let isProducerConnected = false;
 
 export const classifyIntentAndType = (mentions) => {
-    if (!Array.isArray(mentions)) {
-        console.error("Dummy classifyIntentAndType: Input was not an array.");
-        return [];
-    }
-    return mentions.map(mention => {
-        const text = mention.tweetText ? mention.tweetText.toLowerCase() : "";
-        let intent = 'other';
-        let handlingType = 'manual_review'; // Default for 'other'
+  if (!Array.isArray(mentions)) {
+    console.error("Dummy classifyIntentAndType: Input was not an array.");
+    return [];
+  }
+  return mentions.map(mention => {
+    const text = mention.tweetText ? mention.tweetText.toLowerCase() : "";
+    let intent = 'other';
+    let handlingType = 'human';
 
-        if (text.includes('how do i') || text.includes('what is') || text.includes('can you tell me')) {
-            intent = 'question';
-            if (text.includes('simple') || text.includes('reset password')) {
-                handlingType = 'type1_bot';
-            } else {
-                handlingType = 'type2_human';
-            }
-        } else if (text.includes('broken') || text.includes('not working') || text.includes('i hate this')) {
-            intent = 'complaint';
-            if (text.includes('urgent') || text.includes('immediately')) {
-                handlingType = 'type2_human';
-            } else {
-                handlingType = 'type1_bot';
-            }
-        } else if (text.includes('great job') || text.includes('love it') || text.includes('good feature')) {
-            intent = 'feedback';
-            handlingType = 'acknowledge_log';
-        }
-        return { ...mention, intent, handlingType };
-    });
+    if (text.includes('how do i') || text.includes('what is') || text.includes('can you tell me')) {
+      intent = 'question';
+      if (text.includes('simple') || text.includes('reset password')) {
+        handlingType = 'bot';
+      } else {
+        handlingType = 'human';
+      }
+    } else if (text.includes('broken') || text.includes("cancelled") || text.includes('not working') || text.includes('i hate this') || text.includes('pissin') || text.includes("I've been waiting") || text.includes("refreshing") || text.includes('all I got') || text.includes('ban') || text.includes('fuck') || text.includes('Not a big fan') || text.includes("As much as I love")) {
+      intent = 'complaint';
+      if (text.includes('urgent') || text.includes('immediately') || text.includes("cancelled") || text.includes("As much as I love") || text.includes("I've been waiting") || text.includes("refreshing")) {
+        handlingType = 'human';
+      } else {
+        handlingType = 'bot';
+      }
+    } else if (text.includes('great job') || text.includes('love it') || text.includes('good feature')) {
+      intent = 'feedback';
+      handlingType = 'acknowledge_log';
+    }
+    return { ...mention, intent, handlingType };
+  });
 };
 
 // Kafka message processing
 const processMessage = async (messageValue) => {
   try {
     const sentimentMention = JSON.parse(messageValue.toString());
-    // console.log(`IntentClassifier: Received sentiment-classified mention: ${sentimentMention.tweetId || sentimentMention.id}`);
+    console.log(`IntentClassifier: Received mention from sentiment_classified_topic. TweetId: ${sentimentMention.tweetId}, Brand: ${sentimentMention.brand}, CreatedAt: ${sentimentMention.createdAt}, Sentiment: ${sentimentMention.sentiment}`);
+    // For more detailed debugging, uncomment the line below:
+    // console.log('IntentClassifier: Full incoming sentimentMention:', JSON.stringify(sentimentMention, null, 2));
 
-    // classifyIntentAndType expects an array
-    const [intentMention] = classifyIntentAndType([sentimentMention]);
+    // classifyIntentAndType expects an array and returns an array
+    const [intentMention] = classifyIntentAndType([sentimentMention]); // intentMention is { ...sentimentMention, intent, handlingType }
 
     if (intentMention) {
-      // console.log(`IntentClassifier: Classified intent: ${intentMention.intent}, type: ${intentMention.handlingType} for ${intentMention.tweetId || intentMention.id}`);
+      // Log essential fields before sending
+      console.log(`IntentClassifier: Sending to intent_classified_topic. TweetId: ${intentMention.tweetId}, Brand: ${intentMention.brand}, CreatedAt: ${intentMention.createdAt}, Sentiment: ${intentMention.sentiment}, Intent: ${intentMention.intent}`);
+      // For more detailed debugging, uncomment the line below:
+      // console.log('IntentClassifier: Full outgoing intentMention:', JSON.stringify(intentMention, null, 2));
+
+      if (!intentMention.tweetId || !intentMention.createdAt || !intentMention.brand) {
+        console.error('IntentClassifier: CRITICAL - Fields missing before sending to intent_classified_topic!', { tweetId: intentMention.tweetId, createdAt: intentMention.createdAt, brand: intentMention.brand });
+      }
+
       await producer.send({
         topic: OUTPUT_TOPIC,
         messages: [{ value: JSON.stringify(intentMention) }],
       });
-      // console.log(`IntentClassifier: Published intent-classified mention to ${OUTPUT_TOPIC}`);
     } else {
-      console.warn('IntentClassifier: Intent classification returned no result for:', sentimentMention);
+      console.warn('IntentClassifier: Intent classification returned no result for (original sentimentMention):', sentimentMention);
     }
   } catch (error) {
     console.error('IntentClassifier: Error processing message:', error);

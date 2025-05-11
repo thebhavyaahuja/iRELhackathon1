@@ -45,21 +45,29 @@ export const analyzeSentimentForTweets = (tweets) => {
 const processMessage = async (messageValue) => {
   try {
     const mention = JSON.parse(messageValue.toString());
-    // console.log(`SentimentClassifier: Received mention: ${mention.tweetId || mention.id}`);
+    console.log(`SentimentClassifier: Received mention from mentions_topic. TweetId: ${mention.tweetId}, Brand: ${mention.brand}, CreatedAt: ${mention.createdAt}`);
+    // For more detailed debugging, uncomment the line below:
+    // console.log('SentimentClassifier: Full incoming mention:', JSON.stringify(mention, null, 2));
 
-    // Use the existing (or a more sophisticated) sentiment analysis function
-    // analyzeSentimentForTweets expects an array, so wrap the mention
-    const [enrichedMention] = analyzeSentimentForTweets([mention]);
+    // analyzeSentimentForTweets expects an array and returns an array
+    const [enrichedMention] = analyzeSentimentForTweets([mention]); // enrichedMention is { ...mention, sentiment }
 
     if (enrichedMention) {
-      console.log(`SentimentClassifier: Analyzed sentiment: ${enrichedMention.sentiment} for ${enrichedMention.tweetId || enrichedMention.id}`);
+      // Log essential fields before sending
+      console.log(`SentimentClassifier: Sending to sentiment_classified_topic. TweetId: ${enrichedMention.tweetId}, Brand: ${enrichedMention.brand}, CreatedAt: ${enrichedMention.createdAt}, Sentiment: ${enrichedMention.sentiment}`);
+      // For more detailed debugging, uncomment the line below:
+      // console.log('SentimentClassifier: Full outgoing enrichedMention:', JSON.stringify(enrichedMention, null, 2));
+
+      if (!enrichedMention.tweetId || !enrichedMention.createdAt || !enrichedMention.brand) {
+        console.error('SentimentClassifier: CRITICAL - Fields missing before sending to sentiment_classified_topic!', { tweetId: enrichedMention.tweetId, createdAt: enrichedMention.createdAt, brand: enrichedMention.brand });
+      }
+
       await producer.send({
         topic: OUTPUT_TOPIC,
         messages: [{ value: JSON.stringify(enrichedMention) }],
       });
-      // console.log(`SentimentClassifier: Published enriched mention to ${OUTPUT_TOPIC}`);
     } else {
-      console.warn('SentimentClassifier: Sentiment analysis returned no result for:', mention);
+      console.warn('SentimentClassifier: Sentiment analysis returned no result for (original mention):', mention);
     }
   } catch (error) {
     console.error('SentimentClassifier: Error processing message:', error);

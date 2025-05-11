@@ -10,6 +10,7 @@ services:
       POSTGRES_PASSWORD: postgrespassword
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./microservices/db_init_scripts:/docker-entrypoint-initdb.d # Mount init scripts
     ports:
       - "5433:5432" # Expose PostgreSQL on host port 5433 to avoid conflict if local PG runs on 5432
     networks:
@@ -97,11 +98,22 @@ services:
       context: ./microservices/response_generator
       dockerfile: Dockerfile
     container_name: response_generator_service
+    depends_on: # Added depends_on
+      - db
+      - kafka
     networks:
       - social_sentiment_net
+    dns: # Add DNS servers
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       KAFKA_BROKER_URL: kafka:9092
-      # - OPENAI_API_KEY=your_openai_key_here
+      GEMINI_API_KEY: AIzaSyDAiq7Kj6LHr3vrYS7AAt3_MxI5e1JxHTY
+      DB_HOST: db
+      DB_USER: postgres # Or your specific user for response_generator if different
+      DB_PASSWORD: postgrespassword
+      DB_NAME: analytics_db # Assuming it uses the same DB
+      DB_PORT: 5432
     restart: unless-stopped
 
   analytics_engine:
@@ -123,6 +135,26 @@ services:
       - KAFKA_BROKER_URL=kafka:9092
     restart: unless-stopped
 
+  dashboard_ui:
+    build:
+      context: ./microservices/dashboard_ui
+      dockerfile: Dockerfile
+    container_name: dashboard_ui_service
+    ports:
+      - "8501:8501"
+    networks:
+      - social_sentiment_net
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_NAME_ANALYTICS=analytics_db # Same DB as analytics and response generator
+      - DB_USER=postgres
+      - DB_PASSWORD=postgrespassword
+      - PGPORT=5432 # Ensure this matches the internal port of your db service
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0 # Allows Streamlit to be accessed externally
+      - STREAMLIT_SERVER_PORT=8501
+    restart: unless-stopped
 
 volumes:
   postgres_data: # Persists PostgreSQL data

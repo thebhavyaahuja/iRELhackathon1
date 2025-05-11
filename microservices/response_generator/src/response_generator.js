@@ -12,8 +12,8 @@ import { Kafka } from 'kafkajs'; // Added for Kafka
 const KAFKA_BROKER_URL = process.env.KAFKA_BROKER_URL || 'kafka:9092';
 const KAFKA_CLIENT_ID = 'response-generator-service';
 const KAFKA_CONSUMER_GROUP_ID = 'response-generator-group';
-// TODO: Define the topic to consume from, e.g., where intent-classified mentions are published
-const INPUT_KAFKA_TOPIC = process.env.INTENT_CLASSIFIED_TOPIC || 'intent-classified-mentions';
+// Define the topic to consume from, which is the output topic of the intent_classifier
+const INPUT_KAFKA_TOPIC = process.env.INTENT_CLASSIFIED_TOPIC || 'intent_classified_topic';
 // TODO: Define a topic to publish responses to, if applicable
 // const OUTPUT_KAFKA_TOPIC = process.env.GENERATED_RESPONSES_TOPIC || 'generated-responses';
 
@@ -116,60 +116,60 @@ main().catch(error => {
  * Processes intent-classified mention data to generate responses or escalate issues.
  *
  * @param {object} mentionData - The data from the Intent Recognizer.
- * @param {string} mentionData.text - The text of the mention.
+ * @param {string} mentionData.tweetText - The text of the mention.
  * @param {string} mentionData.tweetId - The ID of the tweet.
  * @param {string} mentionData.userId - The ID of the user who made the tweet.
  * @param {string} mentionData.url - The URL of the tweet.
  * @param {('question'|'complaint'|'feedback'|'other')} mentionData.intent - The classified intent of the mention.
- * @param {('bot'|'human')} mentionData.response_type - The type of response required.
+ * @param {('bot'|'human')} mentionData.handlingType - The type of response required.
  */
 async function processMention(mentionData) {
     console.log("Response Generator received mention data:", mentionData);
 
-    const { intent, response_type, text, tweetId, userId, url } = mentionData;
+    const { intent, handlingType, tweetText, tweetId, userId, tweetUrl } = mentionData;
 
-    if ((intent === "question" || intent === "complaint") && response_type === "bot") {
-        console.log(`Intent is '${intent}', response type is 'bot'. Generating automated response for tweet: ${url}`);
-        const botResponse = await generateBotResponse(text, intent, url);
-        console.log(`Generated bot response: "${botResponse}" for tweet: ${url}`);
+    if ((intent === "question" || intent === "complaint") && handlingType === "bot") {
+        console.log(`Intent is '${intent}', response type is 'bot'. Generating automated response for tweet: ${tweetUrl}`);
+        const botResponse = await generateBotResponse(tweetText, intent, tweetUrl);
+        console.log(`Generated bot response: "${botResponse}" for tweet: ${tweetUrl}`);
 
         if (botResponse) { // Attempt to post any generated response (AI or fallback)
             try {
-                await postTweetResponse(botResponse, tweetId, url);
-                console.log(`Successfully posted bot response to X for tweet: ${url}`);
+                await postTweetResponse(botResponse, tweetId, tweetUrl);
+                console.log(`Successfully posted bot response to X for tweet: ${tweetUrl}`);
             } catch (error) {
-                console.error(`Failed to post tweet response for ${url}:`, error);
+                console.error(`Failed to post tweet response for ${tweetUrl}:`, error);
                 // Log failed interaction attempt
-                console.log(`Interaction logged: Failed to post bot response for tweet ${tweetId} (URL: ${url})`);
+                console.log(`Interaction logged: Failed to post bot response for tweet ${tweetId} (URL: ${tweetUrl})`);
             }
         } else {
             // This case should ideally not be hit if generateBotResponse always returns a string.
-            console.log(`No bot response generated (should be fallback at least) for tweet: ${url}. Nothing to post.`);
-            console.log(`Interaction logged: No bot response to post (unexpected) for tweet ${tweetId} (URL: ${url})`);
+            console.log(`No bot response generated (should be fallback at least) for tweet: ${tweetUrl}. Nothing to post.`);
+            console.log(`Interaction logged: No bot response to post (unexpected) for tweet ${tweetId} (URL: ${tweetUrl})`);
         }
-    } else if ((intent === "question" || intent === "complaint") && response_type === "human") {
-        console.log(`Intent is '${intent}', response type is 'human'. Escalating tweet: ${url} for human intervention.`);
+    } else if ((intent === "question" || intent === "complaint") && handlingType === "human") {
+        console.log(`Intent is '${intent}', response type is 'human'. Escalating tweet: ${tweetUrl} for human intervention.`);
         try {
             const ticketId = await openTicketForHumanIntervention(mentionData);
-            console.log(`Interaction logged: Ticket ${ticketId} opened for tweet ${tweetId} (URL: ${url})`);
+            console.log(`Interaction logged: Ticket ${ticketId} opened for tweet ${tweetId} (URL: ${tweetUrl})`);
             // TODO: Send notifications/alerts to the relevant team for human intervention tickets (e.g., via email, Slack).
-            console.log(`Placeholder: Notification sent to human team for ticket ${ticketId} regarding tweet ${url}`);
+            console.log(`Placeholder: Notification sent to human team for ticket ${ticketId} regarding tweet ${tweetUrl}`);
         } catch (error) {
-            console.error(`Failed to open ticket for ${url}:`, error);
-            console.log(`Interaction logged: Failed to open ticket for tweet ${tweetId} (URL: ${url})`);
+            console.error(`Failed to open ticket for ${tweetUrl}:`, error);
+            console.log(`Interaction logged: Failed to open ticket for tweet ${tweetId} (URL: ${tweetUrl})`);
         }
     } else if (intent === "feedback") {
-        console.log(`Intent is 'feedback'. Logging feedback from tweet: ${url}`);
+        console.log(`Intent is 'feedback'. Logging feedback from tweet: ${tweetUrl}`);
         // Log the feedback interaction for analytics.
         // For now, just a console log. In a real system, this might go to a different table or analytics service.
-        console.log(`Interaction logged: Feedback received from tweet ${tweetId} (URL: ${url}). Text: "${text}"`);
+        console.log(`Interaction logged: Feedback received from tweet ${tweetId} (URL: ${tweetUrl}). Text: "${tweetText}"`);
     } else if (intent === "other") {
-        console.log(`Intent is 'other'. No specific action defined for tweet: ${url}`);
+        console.log(`Intent is 'other'. No specific action defined for tweet: ${tweetUrl}`);
         // Log or handle as per business rules for 'other' intents
-        console.log(`Interaction logged: 'Other' intent received for tweet ${tweetId} (URL: ${url}). Text: "${text}"`);
+        console.log(`Interaction logged: 'Other' intent received for tweet ${tweetId} (URL: ${tweetUrl}). Text: "${tweetText}"`);
     } else {
         console.warn("Unknown intent or response type:", mentionData);
-        console.log(`Interaction logged: Unknown intent/response type for tweet ${tweetId} (URL: ${url})`);
+        console.log(`Interaction logged: Unknown intent/response type for tweet ${tweetId} (URL: ${tweetUrl})`);
     }
 }
 
@@ -188,12 +188,12 @@ async function generateBotResponse(mentionText, intent, tweetUrl) {
     // Construct the prompt for Gemini
     let prompt = "";
     if (intent === "question") {
-        prompt = `As a brand representative, provide a helpful and concise answer to the following customer question. If you cannot answer, politely say so and suggest checking official resources or contacting support. Question: "${mentionText}"`;
+        prompt = `As a brand representative, provide a helpful and concise answer to the following customer question. VERY IMPORTANT : Keep the response brief and of one line. If you cannot answer, politely say so and suggest checking official resources or contacting support. Question: "${mentionText}"`;
     } else if (intent === "complaint") {
-        prompt = `As a brand representative, provide an empathetic and helpful initial response to the following customer complaint. Acknowledge their concern and suggest a way to resolve it (e.g., contact support, DM for details). Do not make specific promises you can't keep. Complaint: "${mentionText}"`;
+        prompt = `As a brand representative, provide an empathetic and helpful initial response to the following customer complaint. Acknowledge their concern and suggest a way to resolve it (e.g., contact support, DM for details). VERY IMPORTANT : Keep the response brief and of one line. Complaint: "${mentionText}"`;
     } else {
         // Fallback for other intents if this function is ever called with them
-        prompt = `Respond to the following message: "${mentionText}"`;
+        prompt = `Respond to the following message: "${mentionText}" VERY IMPORTANT : Keep the response brief and of one line.`;
     }
 
     try {
@@ -219,7 +219,7 @@ async function generateBotResponse(mentionText, intent, tweetUrl) {
  */
 async function openTicketForHumanIntervention(mentionData) {
     console.log("Opening ticket for human intervention:", mentionData);
-    const { tweetId, userId, text, url, intent } = mentionData;
+    const { tweetId, userId, tweetText, tweetUrl, intent } = mentionData;
 
     try {
         // Check if a ticket with this tweetId already exists
@@ -228,19 +228,19 @@ async function openTicketForHumanIntervention(mentionData) {
 
         if (checkResult.rows.length > 0) {
             const existingTicketId = checkResult.rows[0].id;
-            console.log(`Ticket for tweet_id: ${tweetId} already exists with id: ${existingTicketId}. (URL: ${url})`);
+            console.log(`Ticket for tweet_id: ${tweetId} already exists with id: ${existingTicketId}. (URL: ${tweetUrl})`);
             return existingTicketId; // Return the ID of the existing ticket
         }
 
         // If no existing ticket, insert a new one
         const insertQueryText = 'INSERT INTO tickets(tweet_id, user_id, tweet_text, tweet_url, intent, status, created_at) VALUES($1, $2, $3, $4, $5, $6, NOW()) RETURNING id';
-        const values = [tweetId, userId, text, url, intent, 'open']; // Default status to 'open'
+        const values = [tweetId, userId, tweetText, tweetUrl, intent, 'open'];
 
         const insertResult = await pool.query(insertQueryText, values);
 
         if (insertResult.rows.length > 0) {
             const newTicketId = insertResult.rows[0].id;
-            console.log(`New ticket opened with id: ${newTicketId} for tweet_id: ${tweetId} (URL: ${url})`);
+            console.log(`New ticket opened with id: ${newTicketId} for tweet_id: ${tweetId} (URL: ${tweetUrl})`);
             return newTicketId; // Return the auto-generated id of the new ticket
         } else {
             console.error(`Failed to insert new ticket for tweet_id: ${tweetId}. No id returned from insert operation.`);
@@ -316,7 +316,7 @@ async function postTweetResponse(tweetText, inReplyToTweetId, originalTweetUrl) 
             "responsive_web_grok_show_grok_translated_post": false,
             "responsive_web_grok_analysis_button_from_backend": true,
             "creator_subscriptions_quote_tweet_preview_enabled": false,
-            "longform_notetweets_rich_text_read_enabled": true,
+            "longform_notetweets_rich_text_read_enabled": true, // Corrected from longform_notetweets_rich_tweetText_read_enabled
             "longform_notetweets_inline_media_enabled": true,
             "profile_label_improvements_pcf_label_in_post_enabled": true,
             "rweb_tipjar_consumption_enabled": true,
@@ -374,38 +374,38 @@ export { processMention, postTweetResponse, openTicketForHumanIntervention }; //
 
 async function testResponseGenerator() {
     // const sampleMentionBot = {
-    //     text: "what is the search feature in website?",
+    //     tweetText: "what is the search feature in website?",
     //     tweetId: "12345",
     //     userId: "user789",
     //     url: "https://x.com/user789/status/12345",
     //     intent: "question",
-    //     response_type: "bot"
+    //     handlingType: "bot"
     // };
     const sampleMentionBot = {
-        text: "heritage icecream is the worst", // Customize if you like
+        tweetText: "heritage icecream is the worst", // Customize if you like
         tweetId: "1920692929854669139", // Replace with a valid Tweet ID
         userId: "user789", // This is less critical for the posting part
         url: "hhttps://x.com/ky00nnie/status/1920692929854669139", // Replace with the URL of that Tweet
         intent: "question",
-        response_type: "bot"
+        handlingType: "bot"
     };
 
     const sampleMentionHuman = {
-        text: "what is the developer's wife's name?",
+        tweetText: "what is the developer's wife's name?",
         tweetId: "67821",
         userId: "user101",
         url: "https://x.com/user101/status/67890",
         intent: "question",
-        response_type: "human"
+        handlingType: "human"
     };
 
     const sampleMentionFeedback = {
-        text: "I love the new feature, it's amazing!",
+        tweetText: "I love the new feature, it's amazing!",
         tweetId: "11223",
         userId: "userHappy",
         url: "https://x.com/userHappy/status/11223",
         intent: "feedback",
-        response_type: "bot" // Or could be 'none' depending on rules
+        handlingType: "bot" // Or could be 'none' depending on rules
     };
 
     await processMention(sampleMentionBot);

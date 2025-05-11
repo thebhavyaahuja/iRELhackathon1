@@ -67,7 +67,7 @@ async function main() {
     await connectProducer();
 
     // Example: Fetch mentions for a specific query
-    const searchQuery = process.env.SEARCH_QUERY || "OpenAI"; // Use env var or default
+    const searchQuery = process.env.SEARCH_QUERY || "gymshark"; // Use env var or default
     console.log(`Fetching mentions for query: "${searchQuery}"`);
     const fetchedMentions = await extractAndAnalyzeMentions(searchQuery);
     console.log(`Fetched ${fetchedMentions.length} mentions/profiles.`);

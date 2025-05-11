@@ -36,36 +36,26 @@ pool.on('error', (err, client) => {
 });
 
 const initializeDatabase = async () => {
-    const client = await pool.connect();
+    let client; // Declare client outside try to access in finally
     try {
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS mentions (
-                id SERIAL PRIMARY KEY,
-                tweet_id VARCHAR(255) UNIQUE NOT NULL,
-                brand VARCHAR(255) NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL,
-                tweet_text TEXT,
-                sentiment VARCHAR(50),
-                intent VARCHAR(100),
-                intent_type VARCHAR(100),
-                platform VARCHAR(100),
-                author_id VARCHAR(255),
-                keywords TEXT[],
-                raw_data JSONB,
-                processed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_mentions_brand_created_at ON mentions (brand, created_at DESC);`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_mentions_sentiment ON mentions (sentiment);`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_mentions_intent ON mentions (intent);`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_mentions_keywords ON mentions USING GIN (keywords);`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_mentions_processed_at ON mentions (processed_at DESC);`);
+        client = await pool.connect(); // Attempt to connect
+        // Schema creation and indexing are now handled by init-db.sql,
+        // which runs when the 'db' service starts.
+        // This function in analytics_engine will now just ensure connectivity
+        // and log that schema management is external.
+        console.log("Analytics engine attempting to connect to the database. Schema initialization is handled by init-db.sql.");
+        // Perform a simple query to confirm connection is truly working after init scripts might have run.
+        await client.query('SELECT 1 AS connection_test'); 
+        console.log("Analytics engine successfully executed a test query against the database.");
     } catch (err) {
-        console.error("Error initializing database:", err);
-        throw err;
+        console.error("Error in analytics_engine initializeDatabase (schema init handled by init-db.sql):", err);
+        // This error will be caught by the initializeDatabase().catch() block below if not handled here.
+        throw err; 
     } finally {
-        client.release();
+        if (client) {
+            client.release();
+            console.log("Database client released in analytics_engine.");
+        }
     }
 };
 
