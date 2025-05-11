@@ -336,31 +336,31 @@ async function postTweetResponse(tweetText, inReplyToTweetId, originalTweetUrl) 
     console.log(`Attempting to post tweet reply to ${inReplyToTweetId}: "${tweetText}"`);
 
     try {
-        const response = await fetch(apiUrl, {
-            method: "POST",
-            headers: headers,
-            body: JSON.stringify(body)
-        });
+        // const response = await fetch(apiUrl, {
+        //     method: "POST",
+        //     headers: headers,
+        //     body: JSON.stringify(body)
+        // });
 
-        const responseData = await response.json();
+        // const responseData = await response.json();
 
-        if (!response.ok) {
-            console.error(`Error posting tweet. Status: ${response.status} ${response.statusText}`, responseData);
-            throw new Error(`Network response was not ok: ${response.statusText}. Body: ${JSON.stringify(responseData)}`);
-        }
+        // if (!response.ok) {
+        //     console.error(`Error posting tweet. Status: ${response.status} ${response.statusText}`, responseData);
+        //     throw new Error(`Network response was not ok: ${response.statusText}. Body: ${JSON.stringify(responseData)}`);
+        // }
 
-        if (responseData.errors && responseData.errors.length > 0) {
-            console.error("Error from X API while creating tweet:", responseData.errors);
-            throw new Error(`X API Error: ${responseData.errors[0].message}`);
-        }
+        // if (responseData.errors && responseData.errors.length > 0) {
+        //     console.error("Error from X API while creating tweet:", responseData.errors);
+        //     throw new Error(`X API Error: ${responseData.errors[0].message}`);
+        // }
 
-        if (responseData.data && responseData.data.create_tweet && responseData.data.create_tweet.tweet_results && responseData.data.create_tweet.tweet_results.result) {
-            console.log("Successfully posted tweet. Response:", JSON.stringify(responseData.data.create_tweet.tweet_results.result, null, 2));
-            return responseData.data.create_tweet.tweet_results.result;
-        } else {
-            console.warn("Tweet may have been posted, but response format was unexpected:", responseData);
-            return responseData; // Return the full response if structure is not as expected
-        }
+        // if (responseData.data && responseData.data.create_tweet && responseData.data.create_tweet.tweet_results && responseData.data.create_tweet.tweet_results.result) {
+        //     console.log("Successfully posted tweet. Response:", JSON.stringify(responseData.data.create_tweet.tweet_results.result, null, 2));
+        //     return responseData.data.create_tweet.tweet_results.result;
+        // } else {
+        //     console.warn("Tweet may have been posted, but response format was unexpected:", responseData);
+        //     return responseData; // Return the full response if structure is not as expected
+        // }
 
     } catch (error) {
         console.error("Failed to post tweet:", error);

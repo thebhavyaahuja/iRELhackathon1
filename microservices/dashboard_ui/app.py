@@ -132,8 +132,18 @@ with col2:
         """
         sentiment_df = fetch_data(sentiment_query)
         if not sentiment_df.empty and 'sentiment' in sentiment_df.columns and 'sentiment_count' in sentiment_df.columns:
-            sentiment_df = sentiment_df.set_index('sentiment')
-            st.bar_chart(sentiment_df['sentiment_count'])
+            # Define a color map for sentiments
+            sentiment_color_map = {
+                'negative': '#F44336',  # Red
+                'positive': '#4CAF50',  # Green
+                'neutral': '#FFC107'   # Amber
+            }
+            # Add a 'bar_color' column to the DataFrame
+            sentiment_df['bar_color'] = sentiment_df['sentiment'].apply(lambda s: sentiment_color_map.get(s, '#808080')) # Default to gray
+            
+            # Plot, using the 'bar_color' column for coloring
+            st.bar_chart(sentiment_df.set_index('sentiment'), y='sentiment_count', color='bar_color')
+
         elif not sentiment_df.empty:
             st.warning("Sentiment data retrieved, but columns 'sentiment' or 'sentiment_count' are missing from the aggregation.")
             st.dataframe(sentiment_df)
@@ -157,8 +167,15 @@ with col3:
         """
         intent_df = fetch_data(intent_query)
         if not intent_df.empty and 'intent' in intent_df.columns and 'intent_count' in intent_df.columns:
-            intent_df = intent_df.set_index('intent')
-            st.bar_chart(intent_df['intent_count'])
+            # Define a basic color palette
+            intent_colors_palette = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
+            
+            # Add a 'bar_color' column to the DataFrame
+            intent_df['bar_color'] = [intent_colors_palette[i % len(intent_colors_palette)] for i in range(len(intent_df))]
+            
+            # Plot, using the 'bar_color' column
+            st.bar_chart(intent_df.set_index('intent'), y='intent_count', color='bar_color')
+            
         elif not intent_df.empty:
             st.warning("Intent data retrieved, but columns 'intent' or 'intent_count' are missing from the aggregation.")
             st.dataframe(intent_df)

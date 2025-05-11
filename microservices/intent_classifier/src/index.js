@@ -25,37 +25,43 @@ let isProducerConnected = false;
 
 export const classifyIntentAndType = (mentions) => {
   if (!Array.isArray(mentions)) {
-    console.error("Dummy classifyIntentAndType: Input was not an array.");
+    console.error("Mock classifyIntentAndType: Input was not an array.");
     return [];
   }
-  return mentions.map(mention => {
-    const text = mention.tweetText ? mention.tweetText.toLowerCase() : "";
-    let intent = 'other';
-    let handlingType = 'human';
 
-    if (text.includes('how do i') || text.includes('what is') || text.includes('can you tell me')) {
-      intent = 'question';
-      if (text.includes('simple') || text.includes('reset password')) {
-        handlingType = 'bot';
-      } else {
-        handlingType = 'human';
-      }
-    } else if (text.includes('broken') || text.includes("cancelled") || text.includes('not working') || text.includes('i hate this') || text.includes('pissin') || text.includes("I've been waiting") || text.includes("refreshing") || text.includes('all I got') || text.includes('ban') || text.includes('fuck') || text.includes('Not a big fan') || text.includes("As much as I love")) {
-      intent = 'complaint';
-      if (text.includes('urgent') || text.includes('immediately') || text.includes("cancelled") || text.includes("As much as I love") || text.includes("I've been waiting") || text.includes("refreshing")) {
-        handlingType = 'human';
-      } else {
-        handlingType = 'bot';
-      }
-    } else if (text.includes('great job') || text.includes('love it') || text.includes('good feature')) {
-      intent = 'feedback';
-      handlingType = 'acknowledge_log';
+  // Define possible intents and handling types with weights
+  const intents = [
+    { value: 'question', weight: 0.3 },
+    { value: 'complaint', weight: 0.4 },
+    { value: 'feedback', weight: 0.2 },
+    { value: 'other', weight: 0.1 }
+  ];
+
+  const handlingTypes = [
+    { value: 'bot', weight: 0.4 },
+    { value: 'human', weight: 0.5 },
+    { value: 'acknowledge_log', weight: 0.1 }
+  ];
+
+  // Weighted random choice function
+  const weightedRandom = (items) => {
+    const total = items.reduce((sum, item) => sum + item.weight, 0);
+    let random = Math.random() * total;
+    
+    for (const item of items) {
+      if (random < item.weight) return item.value;
+      random -= item.weight;
     }
-    return { ...mention, intent, handlingType };
-  });
+    return items[0].value;
+  };
+
+  return mentions.map(mention => ({
+    ...mention,
+    intent: weightedRandom(intents),
+    handlingType: weightedRandom(handlingTypes)
+  }));
 };
 
-// Kafka message processing
 const processMessage = async (messageValue) => {
   try {
     const sentimentMention = JSON.parse(messageValue.toString());

@@ -24,21 +24,49 @@ let isConsumerConnected = false;
 let isProducerConnected = false;
 
 // Original sentiment analysis logic (dummy implementation)
+// export const analyzeSentimentForTweets = (tweets) => {
+//     if (!Array.isArray(tweets)) {
+//         console.error("Dummy analyzeSentimentForTweets: Input was not an array.");
+//         return []; // Or throw new Error("Input must be an array of tweets.");
+//     }
+//     return tweets.map(tweet => {
+//         const text = tweet.tweetText ? tweet.tweetText.toLowerCase() : "";
+//         let sentiment = 'neutral'; // Default dummy sentiment
+//         if (text.includes('wonderful') || text.includes('excellent') || text.includes('happy') || text.includes('love') || text.includes('amazing')) {
+//             sentiment = 'positive';
+//         } else if (text.includes('terrible') || text.includes('horrible') || text.includes('sad') || text.includes('worst') || text.includes('awful')) {
+//             sentiment = 'negative';
+//         }
+//         return { ...tweet, sentiment };
+//     });
+// };
+
 export const analyzeSentimentForTweets = (tweets) => {
-    if (!Array.isArray(tweets)) {
-        console.error("Dummy analyzeSentimentForTweets: Input was not an array.");
-        return []; // Or throw new Error("Input must be an array of tweets.");
+  // return randomly weighted sentiment
+  if (!Array.isArray(tweets)) {
+    console.error("Mock analyzeSentimentForTweets: Input was not an array.");
+    return [];
+  }
+  // Define possible sentiments with weights
+  const sentiments = [
+    { value: 'positive', weight: 0.4 },
+    { value: 'negative', weight: 0.5 },
+    { value: 'neutral', weight: 0.1 }
+  ];
+  // Weighted random choice function  
+  const weightedRandom = (items) => {
+    const total = items.reduce((sum, item) => sum + item.weight, 0);
+    let random = Math.random() * total;
+    for (const item of items) {
+      if (random < item.weight) return item.value;
+      random -= item.weight;
     }
-    return tweets.map(tweet => {
-        const text = tweet.tweetText ? tweet.tweetText.toLowerCase() : "";
-        let sentiment = 'neutral'; // Default dummy sentiment
-        if (text.includes('wonderful') || text.includes('excellent') || text.includes('happy') || text.includes('love') || text.includes('amazing')) {
-            sentiment = 'positive';
-        } else if (text.includes('terrible') || text.includes('horrible') || text.includes('sad') || text.includes('worst') || text.includes('awful')) {
-            sentiment = 'negative';
-        }
-        return { ...tweet, sentiment };
-    });
+    return items[0].value;
+  };
+  return tweets.map(tweet => ({
+    ...tweet,
+    sentiment: weightedRandom(sentiments)
+  }));
 };
 
 // Kafka message processing
