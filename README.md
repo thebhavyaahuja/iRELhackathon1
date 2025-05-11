@@ -15,7 +15,7 @@ This project uses Docker to containerize its microservices. Follow the steps bel
 1. Clone the repository:
    ```bash
    git clone <repository-url>
-   cd hackathon1
+   cd iRELhackathon1
    ```
 
 2. Build the Docker images for all microservices:
