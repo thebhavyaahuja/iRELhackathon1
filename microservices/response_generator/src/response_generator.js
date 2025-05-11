@@ -57,7 +57,7 @@ async function processMention(mentionData) {
         const botResponse = await generateBotResponse(text, intent, url);
         console.log(`Generated bot response: "${botResponse}" for tweet: ${url}`);
         
-        if (botResponse && !botResponse.startsWith("We've received your message")) { // Avoid tweeting fallback messages
+        if (botResponse) { // Attempt to post any generated response (AI or fallback)
             try {
                 await postTweetResponse(botResponse, tweetId, url);
                 console.log(`Successfully posted bot response to X for tweet: ${url}`);
@@ -67,9 +67,9 @@ async function processMention(mentionData) {
                 console.log(`Interaction logged: Failed to post bot response for tweet ${tweetId} (URL: ${url})`);
             }
         } else {
-            console.log(`Skipped posting fallback message for tweet: ${url}`);
-            // Log skipped interaction
-            console.log(`Interaction logged: Skipped posting bot response (fallback message) for tweet ${tweetId} (URL: ${url})`);
+            // This case should ideally not be hit if generateBotResponse always returns a string.
+            console.log(`No bot response generated (should be fallback at least) for tweet: ${url}. Nothing to post.`);
+            console.log(`Interaction logged: No bot response to post (unexpected) for tweet ${tweetId} (URL: ${url})`);
         }
     } else if ((intent === "question" || intent === "complaint") && response_type === "human") {
         console.log(`Intent is '${intent}', response type is 'human'. Escalating tweet: ${url} for human intervention.`);

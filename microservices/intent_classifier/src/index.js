@@ -6,21 +6,21 @@ export const classifyIntentAndType = (mentions) => {
     return mentions.map(mention => {
         const text = mention.tweetText ? mention.tweetText.toLowerCase() : "";
         let intent = 'other';
-        let handlingType = 'manual_review'; // Default for 'other'
+        let handlingType = 'human'; 
 
         if (text.includes('how do i') || text.includes('what is') || text.includes('can you tell me')) {
             intent = 'question';
             if (text.includes('simple') || text.includes('reset password')) {
-                handlingType = 'type1_bot';
+                handlingType = 'bot';
             } else {
-                handlingType = 'type2_human';
+                handlingType = 'human';
             }
-        } else if (text.includes('broken') || text.includes('not working') || text.includes('i hate this')) {
+        } else if (text.includes('broken') || text.includes("cancelled")|| text.includes('not working') || text.includes('i hate this') || text.includes('pissin')|| text.includes("I've been waiting")|| text.includes("refreshing") || text.includes('all I got') || text.includes('ban') || text.includes('fuck') || text.includes('Not a big fan') || text.includes("As much as I love")) {
             intent = 'complaint';
-            if (text.includes('urgent') || text.includes('immediately')) {
-                handlingType = 'type2_human';
+            if (text.includes('urgent') || text.includes('immediately') || text.includes("cancelled") || text.includes("As much as I love") || text.includes("I've been waiting") || text.includes("refreshing")) {
+                handlingType = 'human';
             } else {
-                handlingType = 'type1_bot';
+                handlingType = 'bot';
             }
         } else if (text.includes('great job') || text.includes('love it') || text.includes('good feature')) {
             intent = 'feedback';
