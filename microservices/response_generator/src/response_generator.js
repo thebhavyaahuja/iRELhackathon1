@@ -1,10 +1,18 @@
+require('dotenv').config(); // Load environment variables from .env file
+
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { Pool } = require('pg'); // Added for PostgreSQL
 
 // Initialize the Gemini client with the API key
 // IMPORTANT: It's best practice to use an environment variable for the API key in production.
 // For this example, we are using the key directly as requested.
-const GEMINI_API_KEY = "AIzaSyDAiq7Kj6LHr3vrYS7AAt3_MxI5e1JxHTY";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Read from .env via process.env
+
+if (!GEMINI_API_KEY) {
+    console.error("Error: GEMINI_API_KEY not found. Make sure it is set in your .env file.");
+    // Optionally exit if the key is crucial, e.g., process.exit(1);
+}
+
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Or your preferred model, e.g., "gemini-1.5-flash"
 
@@ -136,7 +144,7 @@ module.exports = { processMention };
 
 async function testResponseGenerator() {
     const sampleMentionBot = {
-        text: "what does ur website even do?",
+        text: "what is the search feature in website?",
         tweetId: "12345",
         userId: "user789",
         url: "https://x.com/user789/status/12345",
