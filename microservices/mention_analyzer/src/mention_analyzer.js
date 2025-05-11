@@ -112,6 +112,7 @@ async function extractAndAnalyzeMentions(searchQuery) {
                         if (tweetResult && tweetResult.core && tweetResult.core.user_results && tweetResult.core.user_results.result && tweetResult.core.user_results.result.legacy) {
                             const userCoreResult = tweetResult.core.user_results.result; // Get the user result object
                             const userLegacy = userCoreResult.legacy; // Get the legacy part of the user
+                            const tweetUrl = `https://x.com/${userLegacy.screen_name}/status/${tweetResult.rest_id}`;
                             mentions.push({
                                 tweetId: tweetResult.rest_id,
                                 userId: userCoreResult.rest_id, // Correctly access rest_id from the user result object
@@ -122,6 +123,7 @@ async function extractAndAnalyzeMentions(searchQuery) {
                                 favoriteCount: tweetResult.legacy.favorite_count,
                                 retweetCount: tweetResult.legacy.retweet_count,
                                 lang: tweetResult.legacy.lang,
+                                tweetUrl: tweetUrl, // Added tweet URL
                                 type: 'tweet'
                             });
                         }
