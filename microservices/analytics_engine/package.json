@@ -1,17 +1,18 @@
 {
   "name": "analytics_engine",
   "version": "1.0.0",
-  "description": "Microservice for analytics and reporting on social media mentions.",
+  "description": "Consumes processed mentions from Kafka and stores analytics in PostgreSQL.",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "bitmap4",
   "license": "ISC",
-  "devDependencies": {
-    "jest": "^29.7.0"
-  },
-  "dependencies": {}
+  "dependencies": {
+    "pg": "^8.11.3",
+    "kafkajs": "^2.2.4"
+  }
 }

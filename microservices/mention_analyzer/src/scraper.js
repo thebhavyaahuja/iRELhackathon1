@@ -1,4 +1,3 @@
-// iRELhackathon1/microservices/mention_analyzer/src/mention_analyzer.js
 async function extractAndAnalyzeMentions(searchQuery) {
     const variables = {
         rawQuery: searchQuery,
@@ -63,7 +62,7 @@ async function extractAndAnalyzeMentions(searchQuery) {
             "x-twitter-active-user": "yes",
             "x-twitter-auth-type": "OAuth2Session",
             "x-twitter-client-language": "en",
-            "cookie": "guest_id=v1%3A171111727480469151; night_mode=2; guest_id_marketing=v1%3A171111727480469151; guest_id_ads=v1%3A171111727480469151; g_state={\\\"i_l\\\":0}; kdt=sCNrpgn8xoVp1N2Af0c5Yghr612S9QkZ0P1v61R7; lang=en; personalization_id=\\\"v1_Fj7mqz3rWrvj6Uoi7HDW8g==\\\"; auth_token=c454b43ea4e0f9c0f6edfe0989c069b4c2f0c6e2; ct0=89a451794283aec91942d9843effbe3b0aad5cc40d94a5235a69be19f1b7c58ca8c1eb630772ca086ea8d9f729bf93dd4fa82163670c0fc53025b9270bebcc6d99bbcf548e4ffff6d02c5307096f310d; twid=u%3D1679775308751175680; att=1-MxTKaSRtlGpasNKGEI2t9yxhFDRKY8a5r1VgcnmX; ph_phc_TXdpocbGVeZVm5VJmAsHTMrCofBQu3e0kN8HGMNGTVW_posthog=%7B%22distinct_id%22%3A%220196bb81-3afd-72d3-9ac0-42adfa0e0649%22%2C%22%24sesid%22%3A%5B1746902530849%2C%220196bb81-3afc-70c7-b9b6-3632297bec3c%22%2C1746902530812%5D%7D; __cf_bm=5xiLOWtRfj3P5h2FAYZu3_ZRA4wxfdArwAwIGIwEq2c-1746906345-1.0.1.1-5aZRys4jhmV_i0.lG4.pqqTHkw.0a9jZg4brk51HFwBQD7klbSwnhX309FGqKsKoICDeAXPh3kDCcIYlqujtlPc2soazznFaf48qdGtSHPbOja6lZjqQn_Qh14wP4i5h", // Restored cookie from search_req.local.js
+            "cookie": "guest_id=v1%3A171111727480469151; night_mode=2; guest_id_marketing=v1%3A171111727480469151; guest_id_ads=v1%3A171111727480469151; g_state={\"i_l\":0}; kdt=sCNrpgn8xoVp1N2Af0c5Yghr612S9QkZ0P1v61R7; lang=en; personalization_id=\"v1_Fj7mqz3rWrvj6Uoi7HDW8g==\"; auth_token=c454b43ea4e0f9c0f6edfe0989c069b4c2f0c6e2; ct0=89a451794283aec91942d9843effbe3b0aad5cc40d94a5235a69be19f1b7c58ca8c1eb630772ca086ea8d9f729bf93dd4fa82163670c0fc53025b9270bebcc6d99bbcf548e4ffff6d02c5307096f310d; twid=u%3D1679775308751175680; att=1-MxTKaSRtlGpasNKGEI2t9yxhFDRKY8a5r1VgcnmX; ph_phc_TXdpocbGVeZVm5VJmAsHTMrCofBQu3e0kN8HGMNGTVW_posthog=%7B%22distinct_id%22%3A%220196bb81-3afd-72d3-9ac0-42adfa0e0649%22%2C%22%24sesid%22%3A%5B1746902530849%2C%220196bb81-3afc-70c7-b9b6-3632297bec3c%22%2C1746902530812%5D%7D; __cf_bm=5xiLOWtRfj3P5h2FAYZu3_ZRA4wxfdArwAwIGIwEq2c-1746906345-1.0.1.1-5aZRys4jhmV_i0.lG4.pqqTHkw.0a9jZg4brk51HFwBQD7klbSwnhX309FGqKsKoICDeAXPh3kDCcIYlqujtlPc2soazznFaf48qdGtSHPbOja6lZjqQn_Qh14wP4i5h", // Added from search_req.local.js
             "Referer": `https://x.com/search?q=${encodeURIComponent(searchQuery)}&src=typed_query`,
             "Referrer-Policy": "strict-origin-when-cross-origin"
         },
@@ -129,6 +128,6 @@ async function extractAndAnalyzeMentions(searchQuery) {
         });
     }
     return mentions;
-}
+  }
 
 export { extractAndAnalyzeMentions };

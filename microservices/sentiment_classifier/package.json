@@ -1,7 +1,7 @@
 {
   "name": "sentiment_classifier",
   "version": "1.0.0",
-  "description": "Microservice for classifying tweet sentiments",
+  "description": "Consumes mentions from Kafka, classifies sentiment, and republishes.",
   "license": "ISC",
   "author": "bitmap4",
   "type": "module",
@@ -10,9 +10,13 @@
     "test": "test"
   },
   "scripts": {
+    "start": "node src/index.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
+    "kafkajs": "^2.2.4"
+  },
+  "devDependencies": {
     "jest": "^29.7.0"
   }
 }

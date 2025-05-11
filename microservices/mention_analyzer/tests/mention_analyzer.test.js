@@ -1,5 +1,5 @@
 import { describe, beforeAll, beforeEach, afterEach, expect, jest } from '@jest/globals';
-import { extractAndAnalyzeMentions } from '../src/mention_analyzer.js';
+import { extractAndAnalyzeMentions } from '../src/scraper';
 
 // Mock the global fetch function
 // global.fetch = jest.fn();

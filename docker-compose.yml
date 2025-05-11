@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: analytics_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432" # Expose PostgreSQL on host port 5433 to avoid conflict if local PG runs on 5432
+    networks:
+      - social_sentiment_net
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:latest # Using Confluent platform image for Kafka
+    container_name: kafka_broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092" # Kafka broker
+      - "9093:9093" # For JMX if needed, or another internal port
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092 # For communication within Docker network
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1 # For Confluent images
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1 # For Confluent images
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1 # For Confluent images
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1 # For Confluent images
+    networks:
+      - social_sentiment_net
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest # Using Confluent platform image for Zookeeper
+    container_name: zookeeper_service
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - social_sentiment_net
+    restart: unless-stopped
+
+  mention_analyzer:
+    build:
+      context: ./microservices/mention_analyzer
+      dockerfile: Dockerfile
+    container_name: mention_analyzer_service
+    depends_on:
+      - kafka
+    networks:
+      - social_sentiment_net
+    dns: # Add DNS servers
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      # Add any environment variables needed by mention_analyzer
+      KAFKA_BROKER_URL: kafka:9092
+      # - TWITTER_API_KEY=your_key_here
+    restart: unless-stopped
+
+  sentiment_classifier:
+    build:
+      context: ./microservices/sentiment_classifier
+      dockerfile: Dockerfile
+    container_name: sentiment_classifier_service
+    networks:
+      - social_sentiment_net
+    environment:
+      KAFKA_BROKER_URL: kafka:9092 # Corrected from localhost:9092
+    restart: unless-stopped
+
+  intent_classifier:
+    build:
+      context: ./microservices/intent_classifier
+      dockerfile: Dockerfile
+    container_name: intent_classifier_service
+    networks:
+      - social_sentiment_net
+    environment:
+      KAFKA_BROKER_URL: kafka:9092
+    restart: unless-stopped
+
+  response_generator:
+    build:
+      context: ./microservices/response_generator
+      dockerfile: Dockerfile
+    container_name: response_generator_service
+    networks:
+      - social_sentiment_net
+    environment:
+      KAFKA_BROKER_URL: kafka:9092
+      # - OPENAI_API_KEY=your_openai_key_here
+    restart: unless-stopped
+
+  analytics_engine:
+    build:
+      context: ./microservices/analytics_engine
+      dockerfile: Dockerfile
+    container_name: analytics_engine_service
+    depends_on:
+      - db
+    networks:
+      - social_sentiment_net
+    environment:
+      - NODE_ENV=docker # or production
+      - PGHOST=db
+      - PGUSER=postgres
+      - PGPASSWORD=postgrespassword 
+      - PGDATABASE=analytics_db
+      - PGPORT=5432
+      - KAFKA_BROKER_URL=kafka:9092
+    restart: unless-stopped
+
+
+volumes:
+  postgres_data: # Persists PostgreSQL data
+
+networks:
+  social_sentiment_net:
+    driver: bridge
+

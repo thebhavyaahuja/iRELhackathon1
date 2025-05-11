@@ -1,7 +1,29 @@
-require('dotenv').config(); // Load environment variables from .env file
+// require('dotenv').config(); // Load environment variables from .env file
 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { Pool } = require('pg'); // Added for PostgreSQL
+// const { GoogleGenerativeAI } = require("@google/generative-ai");
+// const { Pool } = require('pg'); // Added for PostgreSQL
+// const { Kafka } = require('kafkajs'); // Added for Kafka
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Pool } from 'pg'; // Added for PostgreSQL
+import { Kafka } from 'kafkajs'; // Added for Kafka
+
+// Kafka Configuration
+const KAFKA_BROKER_URL = process.env.KAFKA_BROKER_URL || 'kafka:9092';
+const KAFKA_CLIENT_ID = 'response-generator-service';
+const KAFKA_CONSUMER_GROUP_ID = 'response-generator-group';
+// TODO: Define the topic to consume from, e.g., where intent-classified mentions are published
+const INPUT_KAFKA_TOPIC = process.env.INTENT_CLASSIFIED_TOPIC || 'intent-classified-mentions';
+// TODO: Define a topic to publish responses to, if applicable
+// const OUTPUT_KAFKA_TOPIC = process.env.GENERATED_RESPONSES_TOPIC || 'generated-responses';
+
+const kafka = new Kafka({
+    clientId: KAFKA_CLIENT_ID,
+    brokers: [KAFKA_BROKER_URL],
+});
+
+const consumer = kafka.consumer({ groupId: KAFKA_CONSUMER_GROUP_ID });
+// const producer = kafka.producer(); // Uncomment if this service needs to produce messages
 
 // Initialize the Gemini client with the API key
 // IMPORTANT: It's best practice to use an environment variable for the API key in production.
@@ -20,20 +42,74 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Or you
 // IMPORTANT: Replace with your actual database connection details.
 // It's best practice to use environment variables for these in production.
 const pool = new Pool({
-  user: process.env.DB_USER || 'social_app_user', // Replace with your DB user or use env var
-  host: process.env.DB_HOST || 'localhost',    // Replace with your DB host or use env var
-  database: process.env.DB_NAME || 'social_tickets', // Replace with your DB name or use env var
-  password: process.env.DB_PASSWORD || 'postgres_password', // Replace with your DB password or use env var
-  port: process.env.DB_PORT || 5432,             // Replace with your DB port or use env var
+    user: process.env.DB_USER || 'social_app_user', // Replace with your DB user or use env var
+    host: process.env.DB_HOST || 'localhost',    // Replace with your DB host or use env var
+    database: process.env.DB_NAME || 'social_tickets', // Replace with your DB name or use env var
+    password: process.env.DB_PASSWORD || 'postgres_password', // Replace with your DB password or use env var
+    port: process.env.DB_PORT || 5432,             // Replace with your DB port or use env var
 });
 
 // Optional: Test DB connection on startup
 pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('Error connecting to PostgreSQL database:', err);
-  } else {
-    console.log('Successfully connected to PostgreSQL database. Current time:', res.rows[0].now);
-  }
+    if (err) {
+        console.error('Error connecting to PostgreSQL database:', err);
+    } else {
+        console.log('Successfully connected to PostgreSQL database. Current time:', res.rows[0].now);
+    }
+});
+
+async function main() {
+    try {
+        await consumer.connect();
+        // await producer.connect(); // Uncomment if producer is used
+        console.log('Kafka consumer connected successfully.');
+
+        await consumer.subscribe({ topic: INPUT_KAFKA_TOPIC, fromBeginning: true });
+        console.log(`Subscribed to Kafka topic: ${INPUT_KAFKA_TOPIC}`);
+
+        await consumer.run({
+            eachMessage: async ({ topic, partition, message }) => {
+                console.log(`Received message from topic ${topic} (partition ${partition}):`);
+                const mentionData = JSON.parse(message.value.toString());
+                console.log('Mention Data:', mentionData);
+                await processMention(mentionData);
+                // If this service also produces messages, you might send a response here:
+                // await producer.send({ topic: OUTPUT_KAFKA_TOPIC, messages: [{ value: JSON.stringify(response) }] });
+            },
+        });
+    } catch (error) {
+        console.error('Failed to connect or run Kafka consumer:', error);
+        process.exit(1); // Exit if Kafka connection fails
+    }
+}
+
+// Graceful shutdown
+async function shutdown() {
+    console.log('Shutting down Response Generator service...');
+    try {
+        await consumer.disconnect();
+        // await producer.disconnect(); // Uncomment if producer is used
+        console.log('Kafka consumer disconnected.');
+    } catch (error) {
+        console.error('Error disconnecting Kafka consumer:', error);
+    }
+    try {
+        await pool.end();
+        console.log('PostgreSQL pool disconnected.');
+    } catch (error) {
+        console.error('Error closing PostgreSQL pool:', error);
+    }
+    process.exit(0);
+}
+
+// Listen for termination signals
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+// Start the main application logic
+main().catch(error => {
+    console.error("Unhandled error in main execution:", error);
+    shutdown(); // Attempt graceful shutdown on unhandled errors
 });
 
 /**
@@ -56,8 +132,8 @@ async function processMention(mentionData) {
         console.log(`Intent is '${intent}', response type is 'bot'. Generating automated response for tweet: ${url}`);
         const botResponse = await generateBotResponse(text, intent, url);
         console.log(`Generated bot response: "${botResponse}" for tweet: ${url}`);
-        
-        if (botResponse && !botResponse.startsWith("We've received your message")) { // Avoid tweeting fallback messages
+
+        if (botResponse) { // Attempt to post any generated response (AI or fallback)
             try {
                 await postTweetResponse(botResponse, tweetId, url);
                 console.log(`Successfully posted bot response to X for tweet: ${url}`);
@@ -67,9 +143,9 @@ async function processMention(mentionData) {
                 console.log(`Interaction logged: Failed to post bot response for tweet ${tweetId} (URL: ${url})`);
             }
         } else {
-            console.log(`Skipped posting fallback message for tweet: ${url}`);
-            // Log skipped interaction
-            console.log(`Interaction logged: Skipped posting bot response (fallback message) for tweet ${tweetId} (URL: ${url})`);
+            // This case should ideally not be hit if generateBotResponse always returns a string.
+            console.log(`No bot response generated (should be fallback at least) for tweet: ${url}. Nothing to post.`);
+            console.log(`Interaction logged: No bot response to post (unexpected) for tweet ${tweetId} (URL: ${url})`);
         }
     } else if ((intent === "question" || intent === "complaint") && response_type === "human") {
         console.log(`Intent is '${intent}', response type is 'human'. Escalating tweet: ${url} for human intervention.`);
@@ -108,7 +184,7 @@ async function processMention(mentionData) {
 async function generateBotResponse(mentionText, intent, tweetUrl) {
     // Placeholder for Gemini API call
     console.log(`Calling Gemini API for: "${mentionText}" (Intent: ${intent}, URL: ${tweetUrl})`);
-    
+
     // Construct the prompt for Gemini
     let prompt = "";
     if (intent === "question") {
@@ -125,9 +201,9 @@ async function generateBotResponse(mentionText, intent, tweetUrl) {
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const geminiText = response.text();
-        
+
         console.log(`Gemini Response: ${geminiText}`);
-        return geminiText; 
+        return geminiText;
 
     } catch (error) {
         console.error("Error calling Gemini API:", error);
@@ -159,7 +235,7 @@ async function openTicketForHumanIntervention(mentionData) {
         // If no existing ticket, insert a new one
         const insertQueryText = 'INSERT INTO tickets(tweet_id, user_id, tweet_text, tweet_url, intent, status, created_at) VALUES($1, $2, $3, $4, $5, $6, NOW()) RETURNING id';
         const values = [tweetId, userId, text, url, intent, 'open']; // Default status to 'open'
-        
+
         const insertResult = await pool.query(insertQueryText, values);
 
         if (insertResult.rows.length > 0) {
@@ -180,7 +256,7 @@ async function openTicketForHumanIntervention(mentionData) {
 // Function to post a tweet response using the scraped request structure
 async function postTweetResponse(tweetText, inReplyToTweetId, originalTweetUrl) {
     const apiUrl = "https://x.com/i/api/graphql/dOominYnbOIOpEdRJ7_lHw/CreateTweet";
-    
+
     // These headers are taken from your tweet_req.js file.
     // WARNING: These are likely to be session-specific and will expire.
     const headers = {
@@ -224,35 +300,35 @@ async function postTweetResponse(tweetText, inReplyToTweetId, originalTweetUrl) 
             "disallowed_reply_options": null // Added based on typical CreateTweet structure
         },
         "features": { // Copied from your tweet_req.js
-            "premium_content_api_read_enabled":false,
-            "communities_web_enable_tweet_community_results_fetch":true,
-            "c9s_tweet_anatomy_moderator_badge_enabled":true,
-            "responsive_web_grok_analyze_button_fetch_trends_enabled":false,
-            "responsive_web_grok_analyze_post_followups_enabled":true,
-            "responsive_web_jetfuel_frame":false,
-            "responsive_web_grok_share_attachment_enabled":true,
-            "responsive_web_edit_tweet_api_enabled":true,
-            "graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,
-            "view_counts_everywhere_api_enabled":true,
-            "longform_notetweets_consumption_enabled":true,
-            "responsive_web_twitter_article_tweet_consumption_enabled":true,
-            "tweet_awards_web_tipping_enabled":false,
-            "responsive_web_grok_show_grok_translated_post":false,
-            "responsive_web_grok_analysis_button_from_backend":true,
-            "creator_subscriptions_quote_tweet_preview_enabled":false,
-            "longform_notetweets_rich_text_read_enabled":true,
-            "longform_notetweets_inline_media_enabled":true,
-            "profile_label_improvements_pcf_label_in_post_enabled":true,
-            "rweb_tipjar_consumption_enabled":true,
-            "verified_phone_label_enabled":true,
-            "articles_preview_enabled":true,
-            "responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,
-            "freedom_of_speech_not_reach_fetch_enabled":true,
-            "standardized_nudges_misinfo":true,
-            "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,
-            "responsive_web_grok_image_annotation_enabled":true,
-            "responsive_web_graphql_timeline_navigation_enabled":true,
-            "responsive_web_enhance_cards_enabled":false
+            "premium_content_api_read_enabled": false,
+            "communities_web_enable_tweet_community_results_fetch": true,
+            "c9s_tweet_anatomy_moderator_badge_enabled": true,
+            "responsive_web_grok_analyze_button_fetch_trends_enabled": false,
+            "responsive_web_grok_analyze_post_followups_enabled": true,
+            "responsive_web_jetfuel_frame": false,
+            "responsive_web_grok_share_attachment_enabled": true,
+            "responsive_web_edit_tweet_api_enabled": true,
+            "graphql_is_translatable_rweb_tweet_is_translatable_enabled": true,
+            "view_counts_everywhere_api_enabled": true,
+            "longform_notetweets_consumption_enabled": true,
+            "responsive_web_twitter_article_tweet_consumption_enabled": true,
+            "tweet_awards_web_tipping_enabled": false,
+            "responsive_web_grok_show_grok_translated_post": false,
+            "responsive_web_grok_analysis_button_from_backend": true,
+            "creator_subscriptions_quote_tweet_preview_enabled": false,
+            "longform_notetweets_rich_text_read_enabled": true,
+            "longform_notetweets_inline_media_enabled": true,
+            "profile_label_improvements_pcf_label_in_post_enabled": true,
+            "rweb_tipjar_consumption_enabled": true,
+            "verified_phone_label_enabled": true,
+            "articles_preview_enabled": true,
+            "responsive_web_graphql_skip_user_profile_image_extensions_enabled": false,
+            "freedom_of_speech_not_reach_fetch_enabled": true,
+            "standardized_nudges_misinfo": true,
+            "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled": true,
+            "responsive_web_grok_image_annotation_enabled": true,
+            "responsive_web_graphql_timeline_navigation_enabled": true,
+            "responsive_web_enhance_cards_enabled": false
         },
         "queryId": "dOominYnbOIOpEdRJ7_lHw" // Copied from your tweet_req.js
     };
@@ -272,7 +348,7 @@ async function postTweetResponse(tweetText, inReplyToTweetId, originalTweetUrl) 
             console.error(`Error posting tweet. Status: ${response.status} ${response.statusText}`, responseData);
             throw new Error(`Network response was not ok: ${response.statusText}. Body: ${JSON.stringify(responseData)}`);
         }
-        
+
         if (responseData.errors && responseData.errors.length > 0) {
             console.error("Error from X API while creating tweet:", responseData.errors);
             throw new Error(`X API Error: ${responseData.errors[0].message}`);
@@ -292,7 +368,7 @@ async function postTweetResponse(tweetText, inReplyToTweetId, originalTweetUrl) 
     }
 }
 
-module.exports = { processMention, postTweetResponse }; // Added postTweetResponse to exports
+export { processMention, postTweetResponse, openTicketForHumanIntervention }; // Exporting the functions for external use
 
 // Example Usage (for testing purposes, remove or comment out in production)
 
@@ -322,7 +398,7 @@ async function testResponseGenerator() {
         intent: "question",
         response_type: "human"
     };
-    
+
     const sampleMentionFeedback = {
         text: "I love the new feature, it's amazing!",
         tweetId: "11223",
@@ -337,4 +413,4 @@ async function testResponseGenerator() {
     await processMention(sampleMentionFeedback);
 }
 
-testResponseGenerator(); // Make sure this line is uncommented for the test
+// testResponseGenerator(); // Make sure this line is uncommented for the test

@@ -20,7 +20,7 @@ jest.mock('pg', () => ({
 }));
 
 // IMPORTANT: Require the module under test AFTER jest.mock calls
-const { processMention } = require('../src/response_generator');
+import { processMention } from '../src/response_generator';
 
 // Mock console methods to prevent output during tests and allow assertions
 let originalConsole;
