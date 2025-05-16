@@ -34,6 +34,7 @@ This project uses Docker to containerize its microservices. Follow the steps bel
    ```bash
    docker-compose down
    ```
+   (YOU NEED TO ADD YOUR OWN `Gemini API KEY` as well as `Twitter Account Info`
 
 ### Usage Instructions
 
